@@ -15,9 +15,9 @@
 </div>
 <section class="list-toolbar" aria-label="Einkaufsliste bearbeiten">
   <form id="add-form" class="add-form"><span class="add-symbol">+</span><input id="item-name" name="name" placeholder="Was brauchst du?" maxlength="100" required autocomplete="off" aria-label="Artikelname"><button class="primary-button" type="submit">Hinzufügen <span>→</span></button></form>
-  <button id="sync-button" class="secondary-button" type="button" title="Alexa-Liste jetzt importieren"><span class="sync-icon">⟳</span> <span>Synchronisieren</span></button>
+  {% if amazon_configured %}<button id="sync-button" class="secondary-button" type="button" title="Alexa-Liste jetzt importieren"><span class="sync-icon">⟳</span> <span>Synchronisieren</span></button>{% endif %}
 </section>
-<div class="sync-line"><span class="status-dot" id="status-dot"></span><span id="sync-status">Synchronisierung wird geprüft</span></div>
+<div class="sync-line" data-amazon-configured="{{ 'true' if amazon_configured else 'false' }}"><span class="status-dot" id="status-dot"></span><span id="sync-status">{% if amazon_configured %}Synchronisierung wird geprüft{% else %}Amazon-Synchronisierung nicht eingerichtet{% endif %}</span></div>
 <section class="items-section">
   <div class="section-heading"><div><span class="section-label">DEINE LISTE</span><h2>Noch besorgen</h2></div><span id="active-count" class="count-badge">0</span></div>
   <div id="active-items" class="category-groups"></div>

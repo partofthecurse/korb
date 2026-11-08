@@ -37,6 +37,12 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.post("/api/items", json={"name": "Milch"}).status_code, 201)
         self.assertEqual(self.client.get("/api/items").json["items"][0]["name"], "Milch")
 
+    def test_sync_button_is_hidden_until_amazon_credentials_exist(self):
+        self.login()
+        response = self.client.get("/")
+        self.assertNotIn(b'id="sync-button"', response.data)
+        self.assertIn(b"Amazon-Synchronisierung nicht eingerichtet", response.data)
+
     def test_sync_interval_has_bounded_positive_jitter(self):
         with patch("shoppinglist.web.random.uniform", return_value=17):
             self.assertEqual(jittered_interval(300), 317)
@@ -128,6 +134,7 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.store.get_setting("amazon_domain"), "amazon.com")
         page = self.client.get("/settings/amazon")
         self.assertNotIn(b"amazon-private-password", page.data)
+        self.assertIn(b'id="sync-button"', self.client.get("/").data)
         with self.store.path.open("rb") as database:
             database_bytes = database.read()
         self.assertNotIn(b"amazon-private-password", database_bytes)

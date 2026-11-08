@@ -11,3 +11,4 @@ tests
 probe_alexa.py
 .venv
 .github
+compose*.yaml

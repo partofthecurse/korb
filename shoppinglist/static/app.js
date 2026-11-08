@@ -97,6 +97,7 @@ if (activeItems) {
   const completedItems = document.querySelector('#completed-items');
   const status = document.querySelector('#sync-status');
   const statusDot = document.querySelector('#status-dot');
+  const amazonConfigured = document.querySelector('.sync-line')?.dataset.amazonConfigured === 'true';
   let loading = false;
 
   function tile(item) {
@@ -208,7 +209,7 @@ if (activeItems) {
       document.querySelector('#empty-state').hidden = active.length !== 0;
       document.querySelector('#completed-section').hidden = completed.length === 0;
       statusDot.classList.toggle('error', Boolean(data.sync.error));
-      status.textContent = data.sync.running ? 'Synchronisierung läuft …' : data.sync.error || (data.sync.last_success ? `Zuletzt synchronisiert: ${new Date(data.sync.last_success).toLocaleString('de-DE')}` : 'Noch nicht synchronisiert');
+      status.textContent = !amazonConfigured ? 'Amazon-Synchronisierung nicht eingerichtet' : data.sync.running ? 'Synchronisierung läuft …' : data.sync.error || (data.sync.last_success ? `Zuletzt synchronisiert: ${new Date(data.sync.last_success).toLocaleString('de-DE')}` : 'Noch nicht synchronisiert');
     } catch (error) { status.textContent = error.message; statusDot.classList.add('error'); }
     finally { loading = false; }
   }
@@ -234,7 +235,7 @@ if (activeItems) {
       await refresh();
     } catch (error) { status.textContent = error.message; }
   });
-  document.querySelector('#sync-button').addEventListener('click', async () => {
+  document.querySelector('#sync-button')?.addEventListener('click', async () => {
     try { await api('/api/sync', {method: 'POST', body: '{}'}); await refresh(); }
     catch (error) { status.textContent = error.message; }
   });

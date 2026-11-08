@@ -256,7 +256,8 @@ def create_app(test_config=None):
     @app.get("/")
     @login_required
     def index():
-        return render_template("index.html")
+        amazon_configured = all(get_amazon_credentials(store, amazon_cipher).values())
+        return render_template("index.html", amazon_configured=amazon_configured)
 
     @app.get("/api/items")
     @login_required
