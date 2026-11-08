@@ -57,7 +57,12 @@ docker run --rm --network none -v "$PWD/tests:/app/tests:ro" --tmpfs /tmp -e SHO
 
 ## Veröffentlichung
 
-Ein veröffentlichtes GitHub Release baut und testet das Image und veröffentlicht Multi-Arch-Tags `latest`, Haupt-, Neben- und Patchversion nach GHCR. Das Docker-Build schließt `.env*`, `secrets/`, Tests, Datenbanken und GitHub-Workflowdateien aus; das Laufzeitimage kopiert zusätzlich nur `requirements.txt` und `shoppinglist/`. Beim ersten Release das GHCR-Paket einmalig auf **Public** stellen, damit andere ohne GitHub-Anmeldung `docker pull ghcr.io/partofthecurse/korb:latest` ausführen können.
+Ein veröffentlichter GitHub Release oder Push eines `v*`-Tags baut und testet das Image und veröffentlicht Multi-Arch-Tags `latest`, Haupt-, Neben- und Patchversion nach GHCR. Das Docker-Build schließt `.env*`, `secrets/`, Tests, Datenbanken und GitHub-Workflowdateien aus; das Laufzeitimage kopiert zusätzlich nur `requirements.txt` und `shoppinglist/`. Beim ersten Release das GHCR-Paket einmalig auf **Public** stellen, damit andere ohne GitHub-Anmeldung `docker pull ghcr.io/partofthecurse/korb:latest` ausführen können.
+
+## Mitwirkende
+
+- `partofthecurse` — Projekt und Betrieb
+- GitHub Copilot — KI-gestützte Entwicklungsunterstützung
 
 ## Bildnachweis
 
