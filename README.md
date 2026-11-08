@@ -28,3 +28,9 @@ A self-hosted shopping list with a Bring-style interface, Alexa list import, use
 6. Add the page to a phone's home screen: use **Install app** in Android Chrome or **Share → Add to Home Screen** in iOS Safari.
 
 To update after a new release, run `docker compose pull && docker compose up -d`.
+
+## Notices
+
+- Food icons: Twemoji by Twitter, Inc. and contributors, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); distributed via [`@twemoji/svg`](https://www.npmjs.com/package/@twemoji/svg), which is MIT-licensed.
+- Fonts: DM Sans by The DM Sans Project Authors and Outfit by The Outfit Project Authors, both licensed under the [SIL Open Font License 1.1](https://openfontlicense.org/). License files are included with the fonts.
+- GitHub Copilot provided AI-assisted development assistance. See [NOTICE](NOTICE) for the corresponding asset notices.
