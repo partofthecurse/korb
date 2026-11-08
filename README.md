@@ -1,6 +1,6 @@
 # Korb
 
-A self-hosted shopping list with a Bring-style interface, Alexa list import, user accounts, optional two-factor authentication, and a Tailscale Funnel endpoint. Active Alexa items are saved locally before being removed from Amazon; duplicate items are combined and quantities are counted. The app is independent of CastNavidrome and uses `aioamazondevices`. Developed with assistance from GitHub Copilot. Third-party asset notices are in [NOTICE](NOTICE).
+A self-hosted shopping list with a Bring-style interface, Alexa list import, user accounts, optional two-factor authentication, and a Tailscale Funnel endpoint. Active Alexa items are saved locally before being removed from Amazon; duplicate items are combined and quantities are counted. The app uses `aioamazondevices`. Developed with assistance from GitHub Copilot. Third-party asset notices are in [NOTICE](NOTICE).
 
 ## Requirements
 
