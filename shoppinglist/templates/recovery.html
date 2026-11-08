@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+{% block title %}Wiederherstellungscodes{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">SICHERHEIT</span><h1>Wiederherstellung<span class="accent">.</span></h1><p>Bewahre diese einmalig angezeigten Codes an einem sicheren Ort auf.</p></div>
+<div class="recovery-codes">{% for code in codes %}<code>{{ code }}</code>{% endfor %}</div>
+<a class="primary-button inline-button" href="{{ url_for('account') }}">Fertig <span>→</span></a>
+{% endblock %}

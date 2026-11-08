@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Benutzer{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">VERWALTUNG</span><h1>Benutzer<span class="accent">.</span></h1><p>Alle Konten für die gemeinsame Einkaufsliste.</p></div>
+<div class="settings-layout users-layout">
+  <section class="settings-block"><span class="section-label">KONTEN</span><h2>Benutzer verwalten</h2>
+    {% for user in users %}<div class="user-row"><div><strong>{{ user.username }}</strong><div class="user-details">{{ 'Admin' if user.role == 'admin' else 'Benutzer' }} · {{ 'Aktiv' if user.active else 'Deaktiviert' }} · {{ '2FA aktiv' if user.totp_enabled else 'Ohne 2FA' }}</div></div><div class="user-actions">
+    {% for action, label in [('toggle', 'Deaktivieren' if user.active else 'Aktivieren'), ('role', 'Rolle wechseln'), ('reset-2fa', '2FA zurücksetzen')] %}<form method="post" action="{{ url_for('manage_user', user_id=user.id, action=action) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-button" type="submit">{{ label }}</button></form>{% endfor %}
+    <form method="post" action="{{ url_for('manage_user', user_id=user.id, action='delete') }}" data-confirm="Dieses Benutzerkonto wirklich löschen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-button" type="submit">Löschen</button></form>
+    <details><summary>Passwort setzen</summary><form method="post" action="{{ url_for('manage_user', user_id=user.id, action='password') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="password" name="password" minlength="12" placeholder="Neues Passwort" autocomplete="new-password" required><button class="secondary-button" type="submit">Setzen</button></form></details>
+    </div></div>{% endfor %}
+  </section>
+  <section class="settings-block"><span class="section-label">NEUES KONTO</span><h2>Benutzer hinzufügen</h2><form method="post" class="form-stack"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Benutzername<input name="username" maxlength="80" required></label><label>Passwort<input type="password" name="password" minlength="12" autocomplete="new-password" required></label><label>Rolle<select name="role"><option value="user">Benutzer</option><option value="admin">Administrator</option></select></label><button class="primary-button" type="submit">Konto anlegen <span>→</span></button></form></section>
+</div>
+{% endblock %}

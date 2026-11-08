@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block title %}Amazon{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">INTEGRATION</span><h1>Amazon<span class="accent">.</span></h1><p>Alexa-Einkaufsliste mit diesem Konto verbinden.</p></div>
+<div class="settings-layout">
+  <section class="settings-block">
+    <span class="section-label">VERBINDUNG</span>
+    <h2>{% if configured %}Zugangsdaten hinterlegt{% else %}Noch nicht eingerichtet{% endif %}</h2>
+    <p>{% if stored %}Die Zugangsdaten sind verschlüsselt in der Datenbank gespeichert.{% elif configured %}Die Zugangsdaten kommen derzeit aus der Serverkonfiguration.{% else %}E-Mail, Passwort und Amazon-TOTP-Geheimnis hinterlegen, um den automatischen Import zu aktivieren.{% endif %} Gespeicherte Werte werden nie wieder angezeigt.</p>
+    <form method="post" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Amazon-Region<select name="amazon_domain">{% for domain in amazon_domains %}<option value="{{ domain }}" {% if domain == amazon_domain %}selected{% endif %}>{{ domain }}</option>{% endfor %}</select></label>
+      <label>Amazon-E-Mail<input type="email" name="email" maxlength="254" autocomplete="off" placeholder="Leer lassen, um beizubehalten"></label>
+      <label>Amazon-Passwort<input type="password" name="amazon_password" autocomplete="new-password" placeholder="Leer lassen, um beizubehalten"></label>
+      <label>Amazon-TOTP-Geheimnis<input type="password" name="totp_secret" autocomplete="off" placeholder="Authenticator-Schlüssel, nicht der 6-stellige Code"></label>
+      <div class="reauth-fields"><span class="section-label">ÄNDERUNG BESTÄTIGEN</span>
+        <label>Dein Kontopasswort<input type="password" name="current_password" autocomplete="current-password" required></label>
+        {% if totp_required %}<label>Dein 2FA- oder Wiederherstellungscode<input name="current_code" autocomplete="one-time-code" required></label>{% endif %}
+      </div>
+      <button class="primary-button" type="submit">Zugangsdaten speichern <span>→</span></button>
+    </form>
+  </section>
+  <section class="settings-block danger-block">
+    <span class="section-label">ZUGANG ENTFERNEN</span>
+    <h2>Amazon trennen</h2>
+    <p>Entfernt gespeicherte Zugangsdaten und die Amazon-Sitzung. Bereits importierte Einkaufsartikel bleiben erhalten.</p>
+    <form method="post" class="form-stack" data-confirm="Amazon-Zugangsdaten und gespeicherte Sitzung wirklich entfernen?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="clear_credentials" value="yes">
+      <label>Dein Kontopasswort<input type="password" name="current_password" autocomplete="current-password" required></label>
+      {% if totp_required %}<label>Dein 2FA- oder Wiederherstellungscode<input name="current_code" autocomplete="one-time-code" required></label>{% endif %}
+      <button class="secondary-button" type="submit">Amazon-Zugang entfernen</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

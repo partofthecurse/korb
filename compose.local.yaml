@@ -1,0 +1,24 @@
+services:
+  shoppinglist:
+    build: .
+    image: shoppinglist:local
+    container_name: korb
+    restart: unless-stopped
+    environment:
+      SHOPPING_DATA_DIR: /data
+      COOKIE_SECURE: "false"
+      ENABLE_SCHEDULER: "${ENABLE_SCHEDULER:-true}"
+      SYNC_INTERVAL_SECONDS: "${SYNC_INTERVAL_SECONDS:-300}"
+    volumes:
+      - shopping-data:/data
+    ports:
+      - "${SHOPPING_BIND_ADDRESS:-127.0.0.1}:32768:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  shopping-data:
+    name: ${SHOPPING_DATA_VOLUME:-shoppinglist-local-data}

@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+secrets/
+**/__pycache__/
+*.py[cod]
+*.db
+*.sqlite*
+data
+tests
+probe_alexa.py
+.venv
+.github

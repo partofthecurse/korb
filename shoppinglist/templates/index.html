@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="list-heading">
+  <div><span class="eyebrow">GUT ORGANISIERT</span><h1>Dein Einkauf<span class="accent">.</span></h1><p>Für alles, was noch in den Korb muss.</p></div>
+  <div class="list-meta"><span class="meta-label">AUF DER LISTE</span><strong id="item-count">0</strong><span>Artikel</span></div>
+</section>
+<div class="view-control">
+  <span class="view-label">Ansicht</span>
+  <div class="view-segments" role="group" aria-label="Kachelansicht">
+    <button type="button" data-layout="2" aria-label="2 Spalten">2</button>
+    <button type="button" data-layout="3" aria-label="3 Spalten">3</button>
+    <button type="button" data-layout="4" aria-label="4 Spalten">4</button>
+    <button type="button" data-layout="list" aria-label="Listenansicht">Liste</button>
+  </div>
+</div>
+<section class="list-toolbar" aria-label="Einkaufsliste bearbeiten">
+  <form id="add-form" class="add-form"><span class="add-symbol">+</span><input id="item-name" name="name" placeholder="Was brauchst du?" maxlength="100" required autocomplete="off" aria-label="Artikelname"><button class="primary-button" type="submit">Hinzufügen <span>→</span></button></form>
+  <button id="sync-button" class="secondary-button" type="button" title="Alexa-Liste jetzt importieren"><span class="sync-icon">⟳</span> <span>Synchronisieren</span></button>
+</section>
+<div class="sync-line"><span class="status-dot" id="status-dot"></span><span id="sync-status">Synchronisierung wird geprüft</span></div>
+<section class="items-section">
+  <div class="section-heading"><div><span class="section-label">DEINE LISTE</span><h2>Noch besorgen</h2></div><span id="active-count" class="count-badge">0</span></div>
+  <div id="active-items" class="category-groups"></div>
+  <div id="empty-state" class="empty-state" hidden><span>✳</span><h3>Alles erledigt.</h3><p>Deine Einkaufsliste ist gerade leer.</p></div>
+</section>
+<section id="completed-section" class="items-section completed-section" hidden>
+  <div class="section-heading"><div><span class="section-label">ERLEDIGT</span><h2>Im Korb</h2></div><span id="completed-count" class="count-badge">0</span></div>
+  <div id="completed-items" class="category-groups"></div>
+</section>
+<button id="mobile-add-button" class="mobile-fab" type="button" aria-label="Artikel hinzufügen" title="Artikel hinzufügen">+</button>
+<dialog id="mobile-add-dialog" class="add-dialog" aria-labelledby="mobile-add-title">
+  <div class="dialog-heading"><div><span class="section-label">EINKAUFSLISTE</span><h2 id="mobile-add-title">Artikel hinzufügen</h2></div><button id="mobile-add-close" class="icon-button" type="button" aria-label="Schließen">×</button></div>
+  <form id="mobile-add-form" class="form-stack">
+    <label>Artikel<input id="mobile-item-name" name="name" placeholder="Was brauchst du?" maxlength="100" required autocomplete="off"></label>
+    <button class="primary-button" type="submit">Hinzufügen <span>→</span></button>
+  </form>
+</dialog>
+{% endblock %}

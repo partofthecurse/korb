@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Konto{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">EINSTELLUNGEN</span><h1>Dein Konto<span class="accent">.</span></h1><p>Angemeldet als {{ current_user.username }}</p></div>
+<div class="settings-layout">
+  <section class="settings-block"><span class="section-label">ANMELDUNG</span><h2>Zwei-Faktor-Authentifizierung</h2>
+    {% if current_user.totp_enabled %}<p>Dein Konto ist zusätzlich abgesichert.</p><form method="post" class="form-stack compact"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="disable"><label>Passwort<input type="password" name="password" autocomplete="current-password" required></label><label>Authenticator- oder Wiederherstellungscode<input name="code" autocomplete="one-time-code" required></label><button class="secondary-button" type="submit">2FA deaktivieren</button></form>
+    {% elif qr %}<p>Mit deiner Authenticator-App scannen und den aktuellen Code bestätigen.</p><img class="qr" src="data:image/png;base64,{{ qr }}" alt="QR-Code für Authenticator-App"><p class="secret-code">{{ secret }}</p><form method="post" class="form-stack compact"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="confirm"><label>Bestätigungscode<input name="code" autocomplete="one-time-code" required></label><button class="primary-button" type="submit">Aktivieren <span>→</span></button></form>
+    {% else %}<p>Schütze dein Konto zusätzlich mit einer Authenticator-App.</p><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="start"><button class="secondary-button" type="submit">2FA einrichten</button></form>{% endif %}
+  </section>
+  <section class="settings-block"><span class="section-label">ZUGANG</span><h2>Passwort ändern</h2><form method="post" class="form-stack compact"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="action" value="password"><label>Aktuelles Passwort<input type="password" name="current_password" autocomplete="current-password" required></label><label>Neues Passwort<input type="password" name="new_password" minlength="12" autocomplete="new-password" required></label><button class="secondary-button" type="submit">Passwort ändern</button></form></section>
+</div>
+{% endblock %}
