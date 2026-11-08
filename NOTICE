@@ -1,0 +1,9 @@
+Third-party assets
+
+Twemoji graphics in shoppinglist/static/icons/*.svg are copyright Twitter, Inc. and contributors and are licensed under Creative Commons Attribution 4.0 International (CC BY 4.0): https://creativecommons.org/licenses/by/4.0/.
+
+DM Sans is copyright The DM Sans Project Authors. Outfit is copyright The Outfit Project Authors. Both font families are licensed under the SIL Open Font License 1.1; license texts are included in shoppinglist/static/fonts/.
+
+Development assistance
+
+GitHub Copilot provided AI-assisted development assistance for this project.

@@ -10,7 +10,7 @@ from cryptography.fernet import Fernet
 
 from shoppinglist.amazon import AmazonRemote, get_amazon_credentials
 from shoppinglist.security import hasher, load_amazon_cipher
-from shoppinglist.web import create_app
+from shoppinglist.web import create_app, jittered_interval
 
 
 class WebTests(unittest.TestCase):
@@ -36,6 +36,12 @@ class WebTests(unittest.TestCase):
         self.assertEqual(self.client.get("/users").status_code, 403)
         self.assertEqual(self.client.post("/api/items", json={"name": "Milch"}).status_code, 201)
         self.assertEqual(self.client.get("/api/items").json["items"][0]["name"], "Milch")
+
+    def test_sync_interval_has_bounded_positive_jitter(self):
+        with patch("shoppinglist.web.random.uniform", return_value=17):
+            self.assertEqual(jittered_interval(300), 317)
+        with patch("shoppinglist.web.random.uniform", return_value=30):
+            self.assertEqual(jittered_interval(300), 330)
 
     def test_duplicate_item_and_quantity_stepper(self):
         self.login()

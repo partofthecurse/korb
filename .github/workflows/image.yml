@@ -1,7 +1,5 @@
 name: Publish container image
 on:
-  push:
-    tags: ['v*']
   release:
     types: [published]
 

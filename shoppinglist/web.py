@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 import os
+import random
 import secrets
 import sqlite3
 import threading
@@ -88,12 +89,16 @@ class SyncRunner:
         def loop():
             while True:
                 self.start()
-                time.sleep(interval)
+                time.sleep(jittered_interval(interval))
         threading.Thread(target=loop, daemon=True).start()
 
     def snapshot(self):
         with self.status_lock:
             return dict(self.status)
+
+
+def jittered_interval(interval):
+    return interval + random.uniform(0, min(30, interval * 0.1))
 
 
 def create_app(test_config=None):
