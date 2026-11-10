@@ -33,50 +33,25 @@ document.querySelectorAll('.view-segments [data-layout]').forEach(button => {
 });
 setTileLayout(tileLayout);
 
-const foodIcons = [
-  [/apfel|äpfel/, '🍎', 'rose'], [/banane/, '🍌', 'yellow'], [/zitrone|limette/, '🍋', 'yellow'],
-  [/orange|mandarine/, '🍊', 'coral'], [/erdbeer/, '🍓', 'rose'], [/traube/, '🍇', 'lilac'],
-  [/tomate/, '🍅', 'coral'], [/karotte|möhre|mohre/, '🥕', 'coral'], [/gurke|zucchini/, '🥒', 'mint'],
-  [/brokkoli|blumenkohl/, '🥦', 'mint'], [/salat|spinat|kohl/, '🥬', 'mint'], [/paprika/, '🫑', 'mint'],
-  [/kartoffel/, '🥔', 'yellow'], [/zwiebel/, '🧅', 'lilac'], [/knoblauch/, '🧄', 'lilac'],
-  [/pilz|champignon/, '🍄', 'rose'], [/avocado/, '🥑', 'mint'], [/brot|brötchen|broetchen|baguette/, '🍞', 'yellow'],
-  [/milch|joghurt|sahne|quark/, '🥛', 'blue'], [/käse|kaese/, '🧀', 'yellow'], [/butter/, '🧈', 'yellow'],
-  [/ei(er)?\b/, '🥚', 'yellow'], [/fleisch|hähnchen|haehnchen|huhn|wurst|schinken/, '🥩', 'rose'],
-  [/fisch|lachs|thunfisch/, '🐟', 'blue'], [/nudel|pasta|spaghetti/, '🍝', 'coral'], [/reis/, '🍚', 'yellow'],
-  [/kaffee/, '☕', 'coral'], [/tee/, '🍵', 'mint'], [/wasser|saft|getränk|getraenk/, '🧃', 'blue'],
-  [/schokolade|kakao/, '🍫', 'rose'], [/keks|gebäck|gebaeck/, '🍪', 'yellow'], [/mehl|zucker|salz/, '🧂', 'blue'],
-  [/öl|oel|essig/, '🫒', 'mint'], [/seife|spül|spuel|reiniger/, '🧼', 'blue'], [/papier|rolle/, '🧻', 'lilac']
-];
+let categoryOrder = [];
 
-function iconFor(name) {
-  const match = foodIcons.find(([pattern]) => pattern.test(name.toLocaleLowerCase('de')));
-  return match ? [match[1], match[2]] : ['🛒', 'blue'];
+function setupFilter(input, items, text) {
+  input?.addEventListener('input', () => {
+    const query = input.value.trim().toLocaleLowerCase('de');
+    items.forEach(item => { item.hidden = Boolean(query) && !text(item).includes(query); });
+  });
 }
 
-const categoryOrder = [
-  'Obst und Gemüse', 'Snacks und Süßes', 'Limo und Bier', 'Brot und Eier',
-  'Milchprodukte', 'Pasta und Tomatensachen', 'TK', 'Fleischtheke',
-  'Konserven', 'Haushaltsartikel', 'Wein und Spirituosen', 'Sonstiges'
-];
-
-const categoryRules = [
-  ['Wein und Spirituosen', /wein|prosecco|sekt|champagner|gin|vodka|wodka|whisky|whiskey|rum|schnaps|likör|likoer|cognac/],
-  ['Haushaltsartikel', /seife|spül|spuel|reiniger|waschmittel|weichspüler|weichspueler|papier|küchenrolle|kuechenrolle|toilettenpapier|windel|zahnpasta|shampoo|spülmaschine|spuelmaschine|müllbeutel|muellbeutel/],
-  ['TK', /tiefkühl|tiefkuehl|tk[- ]|frozen|tiefkühlpizza|tiefkuehlpizza/],
-  ['Konserven', /konserve|dose|dosen|bohnen|kichererbsen|mais|linsen|tomatenmark|passata|oliven|marmelade/],
-  ['Pasta und Tomatensachen', /nudel|pasta|spaghetti|lasagne|tomatensauce|tomatensoße|tomatensosse|passierte tomaten|pesto/],
-  ['Milchprodukte', /milch|joghurt|sahne|quark|käse|kaese|butter|kefir|frischkäse|frischkaese|camembert|mozzarella|hafermilch/],
-  ['Brot und Eier', /brot|brötchen|broetchen|toast|baguette|croissant|ei(er)?\b/],
-  ['Fleischtheke', /fleisch|hähnchen|haehnchen|huhn|wurst|schinken|bacon|steak|hackfleisch|salami|fisch|lachs|thunfisch/],
-  ['Limo und Bier', /limonade|limo|cola|fanta|sprite|spezi|bier|pils|radler|wasser|saft|getränk|getraenk|softdrink|energy|kaffee|tee/],
-  ['Snacks und Süßes', /schokolade|kakao|keks|gebäck|gebaeck|chips|snack|gummibär|gummibaer|bonbon|süß|suess|riegel|popcorn/],
-  ['Obst und Gemüse', /obst|gemüse|gemuese|apfel|äpfel|aepfel|banane|birne|zitrone|limette|orange|mandarine|erdbeer|traube|tomate|karotte|möhre|mohre|gurke|zucchini|brokkoli|blumenkohl|salat|spinat|kohl|paprika|kartoffel|zwiebel|knoblauch|pilz|champignon|avocado|beere|pfirsich|pflaume|mango|melone/]
-];
-
-function categoryFor(name) {
-  const normalized = name.toLocaleLowerCase('de');
-  return categoryRules.find(([, pattern]) => pattern.test(normalized))?.[0] || 'Sonstiges';
-}
+const foodRows = [...document.querySelectorAll('.food-row')];
+setupFilter(document.querySelector('.food-filter'), foodRows, row => row.dataset.search);
+document.querySelector('.food-filter')?.addEventListener('input', () => {
+  document.querySelectorAll('.food-group').forEach(group => {
+    group.hidden = ![...group.querySelectorAll('.food-row')].some(row => !row.hidden);
+  });
+});
+setupFilter(document.querySelector('.icon-filter'), [...document.querySelectorAll('.icon-option')],
+  option => option.title.toLocaleLowerCase('de'));
+document.querySelector('.icon-option input:checked')?.closest('.icon-option')?.scrollIntoView({block: 'nearest'});
 
 const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 async function api(url, options = {}) {
@@ -101,9 +76,8 @@ if (activeItems) {
   let loading = false;
 
   function tile(item) {
-    const [icon, color] = iconFor(item.name);
     const element = document.createElement('article');
-    element.className = `tile ${color}${item.completed ? ' is-completed' : ''}`;
+    element.className = `tile ${item.color}${item.completed ? ' is-completed' : ''}`;
     const remove = document.createElement('button');
     remove.className = 'tile-remove';
     remove.type = 'button';
@@ -121,7 +95,7 @@ if (activeItems) {
     toggle.setAttribute('aria-label', `${item.name}: ${toggle.title}`);
     const iconElement = document.createElement('img');
     iconElement.className = 'food-icon';
-    iconElement.src = `/static/icons/${icon.codePointAt(0).toString(16)}.svg`;
+    iconElement.src = `/static/icons/${item.icon}.svg`;
     iconElement.alt = '';
     const title = document.createElement('span');
     title.className = 'tile-name';
@@ -169,7 +143,7 @@ if (activeItems) {
 
   function renderGroups(container, items) {
     const groups = new Map(categoryOrder.map(category => [category, []]));
-    for (const item of items) groups.get(categoryFor(item.name)).push(item);
+    for (const item of items) (groups.get(item.category) || groups.get('Sonstiges')).push(item);
     const sections = [];
     for (const category of categoryOrder) {
       const entries = groups.get(category);
@@ -199,6 +173,7 @@ if (activeItems) {
     loading = true;
     try {
       const data = await api('/api/items');
+      categoryOrder = data.categories;
       const active = data.items.filter(item => !item.completed);
       const completed = data.items.filter(item => item.completed);
       renderGroups(activeItems, active);

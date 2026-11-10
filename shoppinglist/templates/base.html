@@ -24,7 +24,7 @@
       <nav class="navigation" aria-label="Hauptnavigation">
         <a class="{% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">Einkauf</a>
         <a class="{% if request.endpoint == 'account' %}active{% endif %}" href="{{ url_for('account') }}">Konto</a>
-        {% if current_user.role == 'admin' %}<a class="{% if request.endpoint == 'users' %}active{% endif %}" href="{{ url_for('users') }}">Benutzer</a><a class="{% if request.endpoint == 'amazon_settings' %}active{% endif %}" href="{{ url_for('amazon_settings') }}">Amazon</a>{% endif %}
+        {% if current_user.role == 'admin' %}<a class="{% if request.endpoint == 'users' %}active{% endif %}" href="{{ url_for('users') }}">Benutzer</a><a class="{% if request.endpoint == 'foods' %}active{% endif %}" href="{{ url_for('foods') }}">Lebensmittel</a><a class="{% if request.endpoint == 'amazon_settings' %}active{% endif %}" href="{{ url_for('amazon_settings') }}">Amazon</a>{% endif %}
       </nav>
       {% endif %}
       <div class="top-actions">

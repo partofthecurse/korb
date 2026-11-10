@@ -3,6 +3,8 @@ import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
 
+from .catalog import DEFAULT_FOODS
+
 
 class Store:
     def __init__(self, path):
@@ -50,6 +52,15 @@ class Store:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS foods (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    name_key TEXT NOT NULL UNIQUE,
+                    terms TEXT NOT NULL DEFAULT '',
+                    icon TEXT NOT NULL,
+                    category TEXT NOT NULL,
+                    color TEXT NOT NULL
+                );
             """)
             columns = {row["name"] for row in connection.execute("PRAGMA table_info(items)")}
             if "quantity" not in columns:
@@ -64,6 +75,10 @@ class Store:
                     )
                 self._merge_duplicate_items(connection)
             connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS items_name_key ON items(name_key)")
+            seeded = connection.execute("SELECT 1 FROM settings WHERE key = 'foods_seeded'").fetchone()
+            if not seeded:
+                self._insert_default_foods(connection)
+                connection.execute("INSERT INTO settings (key, value) VALUES ('foods_seeded', '1')")
 
     @staticmethod
     def name_key(name):
@@ -209,3 +224,41 @@ class Store:
     def delete_settings(self, keys):
         with self.connect() as connection:
             connection.executemany("DELETE FROM settings WHERE key = ?", [(key,) for key in keys])
+    @classmethod
+    def _insert_default_foods(cls, connection):
+        return sum(connection.execute(
+            "INSERT OR IGNORE INTO foods (name, name_key, terms, icon, category, color) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, cls.name_key(name), terms, icon, category, color),
+        ).rowcount for name, terms, icon, category, color in DEFAULT_FOODS)
+
+    def restore_default_foods(self):
+        with self.connect() as connection:
+            return self._insert_default_foods(connection)
+
+    def list_foods(self):
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT id, name, terms, icon, category, color FROM foods ORDER BY name COLLATE NOCASE"
+            )]
+
+    def save_food(self, food_id, name, terms, icon, category, color):
+        """Insert (food_id None) or update a food entry. Returns False on a duplicate name."""
+        values = (name, self.name_key(name), terms, icon, category, color)
+        try:
+            with self.connect() as connection:
+                if food_id is None:
+                    connection.execute(
+                        "INSERT INTO foods (name, name_key, terms, icon, category, color) VALUES (?, ?, ?, ?, ?, ?)",
+                        values,
+                    )
+                    return True
+                return bool(connection.execute(
+                    "UPDATE foods SET name = ?, name_key = ?, terms = ?, icon = ?, category = ?, color = ? WHERE id = ?",
+                    (*values, food_id),
+                ).rowcount)
+        except sqlite3.IntegrityError:
+            return False
+
+    def delete_food(self, food_id):
+        with self.connect() as connection:
+            return connection.execute("DELETE FROM foods WHERE id = ?", (food_id,)).rowcount
