@@ -3,7 +3,7 @@ import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
 
-from .catalog import DEFAULT_FOODS
+from .catalog import CATEGORIES, DEFAULT_FOODS, FALLBACK_CATEGORY
 
 
 class Store:
@@ -52,6 +52,12 @@ class Store:
                     key TEXT PRIMARY KEY,
                     value TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS categories (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    name_key TEXT NOT NULL UNIQUE,
+                    position INTEGER NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS foods (
                     id INTEGER PRIMARY KEY,
                     name TEXT NOT NULL,
@@ -75,6 +81,11 @@ class Store:
                     )
                 self._merge_duplicate_items(connection)
             connection.execute("CREATE UNIQUE INDEX IF NOT EXISTS items_name_key ON items(name_key)")
+            if not connection.execute("SELECT 1 FROM categories LIMIT 1").fetchone():
+                connection.executemany(
+                    "INSERT INTO categories (name, name_key, position) VALUES (?, ?, ?)",
+                    [(name, self.name_key(name), position) for position, name in enumerate(CATEGORIES)],
+                )
             seeded = connection.execute("SELECT 1 FROM settings WHERE key = 'foods_seeded'").fetchone()
             if not seeded:
                 self._insert_default_foods(connection)
@@ -262,3 +273,72 @@ class Store:
     def delete_food(self, food_id):
         with self.connect() as connection:
             return connection.execute("DELETE FROM foods WHERE id = ?", (food_id,)).rowcount
+
+    def list_categories(self):
+        with self.connect() as connection:
+            return [dict(row) for row in connection.execute(
+                "SELECT id, name, (SELECT COUNT(*) FROM foods WHERE foods.category = categories.name) AS food_count "
+                "FROM categories ORDER BY position, id"
+            )]
+
+    def category_names(self):
+        return [category["name"] for category in self.list_categories()]
+
+    def add_category(self, name):
+        try:
+            with self.connect() as connection:
+                connection.execute(
+                    "INSERT INTO categories (name, name_key, position) "
+                    "VALUES (?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM categories))",
+                    (name, self.name_key(name)),
+                )
+            return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def rename_category(self, category_id, name):
+        """Rename a department and its foods. Returns None if missing, False on a duplicate/protected name."""
+        try:
+            with self.connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                row = connection.execute("SELECT name FROM categories WHERE id = ?", (category_id,)).fetchone()
+                if not row:
+                    return None
+                if row["name"] == FALLBACK_CATEGORY:
+                    return False
+                connection.execute(
+                    "UPDATE categories SET name = ?, name_key = ? WHERE id = ?",
+                    (name, self.name_key(name), category_id),
+                )
+                connection.execute("UPDATE foods SET category = ? WHERE category = ?", (name, row["name"]))
+                return True
+        except sqlite3.IntegrityError:
+            return False
+
+    def move_category(self, category_id, offset):
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            ids = [row["id"] for row in connection.execute("SELECT id FROM categories ORDER BY position, id")]
+            if category_id not in ids:
+                return False
+            index = ids.index(category_id)
+            target = max(0, min(len(ids) - 1, index + offset))
+            ids.insert(target, ids.pop(index))
+            connection.executemany(
+                "UPDATE categories SET position = ? WHERE id = ?",
+                [(position, item_id) for position, item_id in enumerate(ids)],
+            )
+            return True
+
+    def delete_category(self, category_id):
+        """Delete a department; its foods move to the fallback department. Returns None/False/True."""
+        with self.connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute("SELECT name FROM categories WHERE id = ?", (category_id,)).fetchone()
+            if not row:
+                return None
+            if row["name"] == FALLBACK_CATEGORY:
+                return False
+            connection.execute("UPDATE foods SET category = ? WHERE category = ?", (FALLBACK_CATEGORY, row["name"]))
+            connection.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+            return True

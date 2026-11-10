@@ -9,6 +9,26 @@
   <div class="chip-list">{% for name in unmatched %}<a class="chip" href="{{ url_for('foods', name=name) }}#food-form">{{ name }} <span>+</span></a>{% endfor %}</div>
 </section>
 {% endif %}
+<section class="settings-block departments-block" id="departments">
+  <span class="section-label">ABTEILUNGEN</span><h2>Reihenfolge im Laden</h2>
+  <p>In dieser Reihenfolge erscheinen die Abteilungen auf der Einkaufsliste – am besten so, wie du durch den Laden gehst.</p>
+  <ol class="department-list">
+    {% for department in departments %}
+    <li class="department-row">
+      <span class="department-position">{{ loop.index }}</span>
+      <span class="department-name"><strong>{{ department.name }}</strong><small>{{ department.food_count }} Lebensmittel</small></span>
+      <span class="department-actions">
+        {% for action, symbol, label, disabled in [('up', '↑', 'nach oben', loop.first), ('down', '↓', 'nach unten', loop.last)] %}<form method="post" action="{{ url_for('manage_category', category_id=department.id, action=action) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="icon-button small" type="submit" title="{{ department.name }} {{ label }}" aria-label="{{ department.name }} {{ label }}" {% if disabled %}disabled{% endif %}>{{ symbol }}</button></form>{% endfor %}
+        {% if department.name != fallback %}
+        <details><summary>Umbenennen</summary><form method="post" action="{{ url_for('manage_category', category_id=department.id, action='rename') }}" class="inline-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="name" maxlength="60" value="{{ department.name }}" required aria-label="Neuer Name"><button class="secondary-button" type="submit">OK</button></form></details>
+        <form method="post" action="{{ url_for('manage_category', category_id=department.id, action='delete') }}" data-confirm="Abteilung „{{ department.name }}“ löschen? Ihre Lebensmittel kommen nach „{{ fallback }}“."><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-button" type="submit">Löschen</button></form>
+        {% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+  <form method="post" action="{{ url_for('add_category') }}" class="inline-form add-department"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input name="name" maxlength="60" required placeholder="Neue Abteilung, z. B. Drogerie" aria-label="Neue Abteilung"><button class="secondary-button" type="submit">Hinzufügen</button></form>
+</section>
 <div class="settings-layout foods-layout">
   <section class="settings-block" id="food-form">
     <span class="section-label">{% if edit_id %}EINTRAG BEARBEITEN{% else %}NEUER EINTRAG{% endif %}</span>
