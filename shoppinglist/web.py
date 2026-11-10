@@ -19,7 +19,7 @@ from flask_login import LoginManager, UserMixin, current_user, login_required, l
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
-from .catalog import CATEGORIES, COLORS, ICON_LABELS, Matcher, available_icons
+from .catalog import COLORS, FALLBACK_CATEGORY, ICON_LABELS, Matcher, available_icons
 from .amazon import AMAZON_DOMAINS, AMAZON_SETTINGS, AmazonRemote, get_amazon_credentials
 from .security import DUMMY_HASH, clear_failures, hasher, load_amazon_cipher, load_keys, password_valid, rate_limited, record_failure, recovery_hash
 from .store import Store
@@ -265,7 +265,7 @@ def create_app(test_config=None):
     def items():
         matcher = Matcher(store.list_foods())
         entries = [{**item, **matcher.describe(item["name"])} for item in store.list_items()]
-        return jsonify(items=entries, categories=CATEGORIES, sync=runner.snapshot())
+        return jsonify(items=entries, categories=store.category_names(), sync=runner.snapshot())
 
     @app.post("/api/items")
     @login_required
@@ -395,7 +395,7 @@ def create_app(test_config=None):
             form["terms"] = ", ".join(term.strip() for term in form["terms"].split(",") if term.strip())
             food_id = request.form.get("food_id", type=int)
             if (not 1 <= len(form["name"]) <= 100 or len(form["terms"]) > 1000 or form["icon"] not in icons
-                    or form["category"] not in CATEGORIES or form["color"] not in COLORS):
+                    or form["category"] not in store.category_names() or form["color"] not in COLORS):
                 flash("Bitte Namen, Abteilung, Farbe und Icon angeben.", "error")
                 return render_foods(form, food_id), 400
             if not store.save_food(food_id, **form):
@@ -418,11 +418,54 @@ def create_app(test_config=None):
         catalog = store.list_foods()
         matcher = Matcher(catalog)
         unmatched = sorted({item["name"] for item in store.list_items() if matcher.match(item["name"]) is None}, key=str.casefold)
-        grouped = {category: [food for food in catalog if food["category"] == category] for category in CATEGORIES}
+        categories = store.list_categories()
+        names = [category["name"] for category in categories]
+        grouped = {name: [food for food in catalog if food["category"] == name] for name in names}
+        orphaned = [food for food in catalog if food["category"] not in grouped]
+        grouped.setdefault(FALLBACK_CATEGORY, []).extend(orphaned)
         return render_template(
             "foods.html", form=form, edit_id=edit_id, grouped=grouped, total=len(catalog), unmatched=unmatched,
-            categories=CATEGORIES, colors=COLORS, icons=icons, icon_labels=ICON_LABELS,
+            categories=names, departments=categories, fallback=FALLBACK_CATEGORY, colors=COLORS, icons=icons, icon_labels=ICON_LABELS,
         )
+
+    @app.post("/categories")
+    @admin_required
+    def add_category():
+        name = " ".join(request.form.get("name", "").split())
+        if not 1 <= len(name) <= 60:
+            flash("Bitte einen Namen mit höchstens 60 Zeichen angeben.", "error")
+        elif not store.add_category(name):
+            flash("Diese Abteilung gibt es schon.", "error")
+        else:
+            flash(f"Abteilung „{name}“ angelegt.", "success")
+        return redirect(url_for("foods") + "#departments")
+
+    @app.post("/categories/<int:category_id>/<action>")
+    @admin_required
+    def manage_category(category_id, action):
+        if action in ("up", "down", "top", "bottom"):
+            offset = {"up": -1, "down": 1, "top": -10_000, "bottom": 10_000}[action]
+            if not store.move_category(category_id, offset):
+                abort(404)
+        elif action == "rename":
+            name = " ".join(request.form.get("name", "").split())
+            if not 1 <= len(name) <= 60:
+                flash("Bitte einen Namen mit höchstens 60 Zeichen angeben.", "error")
+            else:
+                result = store.rename_category(category_id, name)
+                if result is None:
+                    abort(404)
+                if not result:
+                    flash(f"Umbenennen nicht möglich: Name schon vergeben oder „{FALLBACK_CATEGORY}“.", "error")
+        elif action == "delete":
+            result = store.delete_category(category_id)
+            if result is None:
+                abort(404)
+            flash(f"Abteilung gelöscht, ihre Lebensmittel stehen jetzt unter „{FALLBACK_CATEGORY}“." if result
+                  else f"„{FALLBACK_CATEGORY}“ kann nicht gelöscht werden.", "success" if result else "error")
+        else:
+            abort(404)
+        return redirect(url_for("foods") + "#departments")
 
     @app.post("/foods/<int:food_id>/delete")
     @admin_required

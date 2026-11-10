@@ -320,3 +320,37 @@ class FoodCatalogTests(unittest.TestCase):
         icons_dir = Path(self.app.static_folder) / "icons"
         for food in self.store.list_foods():
             self.assertTrue((icons_dir / f"{food['icon']}.svg").exists(), food["name"])
+
+    def test_departments_can_be_added_reordered_renamed_and_deleted(self):
+        self.login()
+        self.assertEqual(self.client.post("/categories", data={"name": "Drogerie"}).status_code, 302)
+        self.assertEqual(self.client.post("/categories", data={"name": " drogerie "}).status_code, 302)
+        names = self.store.category_names()
+        self.assertEqual(names.count("Drogerie"), 1)
+        self.assertEqual(names[-1], "Drogerie")
+        drogerie = next(c for c in self.store.list_categories() if c["name"] == "Drogerie")
+        self.client.post(f"/categories/{drogerie['id']}/top")
+        self.client.post(f"/categories/{drogerie['id']}/down")
+        self.assertEqual(self.store.category_names()[1], "Drogerie")
+        self.assertEqual(self.client.get("/api/items").json["categories"][1], "Drogerie")
+
+        self.client.post("/foods", data={"name": "Haarkur", "terms": "haarmaske", "icon": "1f9f4",
+                                         "category": "Drogerie", "color": "blue"})
+        self.assertEqual(self.describe("Haarkur")["category"], "Drogerie")
+        self.client.post(f"/categories/{drogerie['id']}/rename", data={"name": "Drogerie & Pflege"})
+        self.assertEqual(self.describe("Haarkur")["category"], "Drogerie & Pflege")
+        self.client.post(f"/categories/{drogerie['id']}/delete")
+        self.assertNotIn("Drogerie & Pflege", self.store.category_names())
+        self.assertEqual(self.describe("Haarkur")["category"], "Sonstiges")
+
+    def test_fallback_department_is_protected_and_users_cannot_manage(self):
+        self.login()
+        fallback = next(c for c in self.store.list_categories() if c["name"] == "Sonstiges")
+        self.client.post(f"/categories/{fallback['id']}/delete")
+        self.client.post(f"/categories/{fallback['id']}/rename", data={"name": "Rest"})
+        self.assertIn("Sonstiges", self.store.category_names())
+        self.assertEqual(self.client.post(f"/categories/{fallback['id']}/explode").status_code, 404)
+        self.assertEqual(self.client.post("/categories/9999/up").status_code, 404)
+        self.client.post("/logout")
+        self.login("user", "user-password-123")
+        self.assertEqual(self.client.post("/categories", data={"name": "X"}).status_code, 403)
