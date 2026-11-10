@@ -36,6 +36,8 @@ A self-hosted shopping list with a Bring-style interface, Alexa list import, use
 
    Funnel is public to the internet; app login remains required. Once HTTPS is active, install the PWA with **Install app** in Android Chrome or **Share → Add to Home Screen** in iOS Safari.
 
+Admins can manage the food catalog under **Lebensmittel**: each entry sets the icon, store department, and tile color for matching list items. Items that match nothing are listed there for quick assignment.
+
 To update after a new release, run `docker compose pull && docker compose up -d`.
 
 ## Notices

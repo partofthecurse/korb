@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Lebensmittel{% endblock %}
+{% block content %}
+<div class="page-heading"><span class="eyebrow">VERWALTUNG</span><h1>Lebensmittel<span class="accent">.</span></h1><p>Legt fest, welches Icon und welche Abteilung ein Artikel auf der Liste bekommt.</p></div>
+{% if unmatched %}
+<section class="settings-block unmatched-block">
+  <span class="section-label">NICHT ZUGEORDNET</span><h2>Diese Artikel landen unter „Sonstiges“</h2>
+  <p>Antippen, um einen passenden Eintrag anzulegen.</p>
+  <div class="chip-list">{% for name in unmatched %}<a class="chip" href="{{ url_for('foods', name=name) }}#food-form">{{ name }} <span>+</span></a>{% endfor %}</div>
+</section>
+{% endif %}
+<div class="settings-layout foods-layout">
+  <section class="settings-block" id="food-form">
+    <span class="section-label">{% if edit_id %}EINTRAG BEARBEITEN{% else %}NEUER EINTRAG{% endif %}</span>
+    <h2>{% if edit_id %}{{ form.name }}{% else %}Lebensmittel hinzufügen{% endif %}</h2>
+    <form method="post" action="{{ url_for('foods') }}" class="form-stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if edit_id %}<input type="hidden" name="food_id" value="{{ edit_id }}">{% endif %}
+      <label>Name<input name="name" maxlength="100" required value="{{ form.name }}" placeholder="z. B. Ananas"></label>
+      <label>Weitere Begriffe <span class="hint">kommagetrennt, „=“ davor nur als ganzes Wort</span><input name="terms" maxlength="1000" value="{{ form.terms }}" placeholder="z. B. pineapple, ananasstücke"></label>
+      <div class="field-row">
+        <label>Abteilung<select name="category" required>{% if not form.category %}<option value="" selected disabled>Bitte wählen</option>{% endif %}{% for category in categories %}<option value="{{ category }}" {% if category == form.category %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></label>
+        <label>Kachelfarbe<select name="color" required>{% for key, label in colors.items() %}<option value="{{ key }}" {% if key == (form.color or 'blue') %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      </div>
+      <fieldset class="icon-picker"><legend>Icon</legend>
+        <input class="icon-filter" type="search" placeholder="Icon suchen …" aria-label="Icon suchen">
+        <div class="icon-grid">{% for icon in icons %}<label class="icon-option" title="{{ icon_labels.get(icon, icon) }}"><input type="radio" name="icon" value="{{ icon }}" required {% if icon == form.icon %}checked{% endif %}><img src="{{ url_for('static', filename='icons/' ~ icon ~ '.svg') }}" alt="{{ icon_labels.get(icon, icon) }}" loading="lazy"></label>{% endfor %}</div>
+      </fieldset>
+      <div class="form-actions"><button class="primary-button" type="submit">Speichern <span>→</span></button>{% if edit_id or form.name %}<a class="text-button" href="{{ url_for('foods') }}">Abbrechen</a>{% endif %}</div>
+    </form>
+    {% if edit_id %}<form method="post" action="{{ url_for('delete_food', food_id=edit_id) }}" data-confirm="Diesen Eintrag wirklich löschen?" class="delete-food"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="text-button" type="submit">Eintrag löschen</button></form>{% endif %}
+  </section>
+  <section class="settings-block">
+    <span class="section-label">KATALOG · {{ total }} EINTRÄGE</span><h2>Alle Lebensmittel</h2>
+    <input class="food-filter" type="search" placeholder="Katalog durchsuchen …" aria-label="Katalog durchsuchen">
+    {% for category, entries in grouped.items() if entries %}
+    <div class="food-group"><h3>{{ category }} <span class="count-badge">{{ entries|length }}</span></h3>
+      {% for food in entries %}<a class="food-row {{ food.color }}{% if food.id == edit_id %} selected{% endif %}" href="{{ url_for('foods', edit=food.id) }}#food-form" data-search="{{ (food.name ~ ' ' ~ food.terms)|lower }}"><img src="{{ url_for('static', filename='icons/' ~ food.icon ~ '.svg') }}" alt="" loading="lazy"><span><strong>{{ food.name }}</strong>{% if food.terms %}<small>{{ food.terms }}</small>{% endif %}</span></a>{% endfor %}
+    </div>
+    {% endfor %}
+    <form method="post" action="{{ url_for('restore_foods') }}" class="restore-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="secondary-button" type="submit">Fehlende Standardeinträge ergänzen</button></form>
+  </section>
+</div>
+{% endblock %}

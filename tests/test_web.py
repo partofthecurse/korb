@@ -239,3 +239,84 @@ class WebTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class FoodCatalogTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.app = create_app({"TESTING": True, "DATA_DIR": self.temp.name, "ENABLE_SCHEDULER": False,
+                               "SESSION_COOKIE_SECURE": False, "WTF_CSRF_ENABLED": False})
+        self.store = self.app.extensions["shopping_store"]
+        with self.store.connect() as connection:
+            connection.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                               ("admin", hasher.hash("admin-password-123"), "admin"))
+            connection.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                               ("user", hasher.hash("user-password-123"), "user"))
+        self.client = self.app.test_client()
+
+    def login(self, username="admin", password="admin-password-123"):
+        return self.client.post("/login", data={"username": username, "password": password})
+
+    def describe(self, name):
+        self.client.post("/api/items", json={"name": name})
+        return next(item for item in self.client.get("/api/items").json["items"] if item["name"] == name)
+
+    def test_items_get_icon_and_department_from_catalog(self):
+        self.login("user", "user-password-123")
+        cases = {
+            "Ananas": ("1f34d", "Obst und Gemüse"),
+            "Ananassaft": ("1f9c3", "Limo und Bier"),
+            "Eier": ("1f95a", "Brot und Eier"),
+            "Tomatenmark": ("1f345", "Pasta und Tomatensachen"),
+            "Erdbeerjoghurt": ("1f95b", "Milchprodukte"),
+            "Kartoffelchips": ("1f954", "Snacks und Süßes"),
+            "Brei": ("1f6d2", "Sonstiges"),
+        }
+        for name, (icon, category) in cases.items():
+            item = self.describe(name)
+            self.assertEqual((item["icon"], item["category"]), (icon, category), name)
+        self.assertIn("Sonstiges", self.client.get("/api/items").json["categories"])
+
+    def test_catalog_is_admin_only(self):
+        self.login("user", "user-password-123")
+        self.assertEqual(self.client.get("/foods").status_code, 403)
+        self.assertEqual(self.client.post("/foods", data={"name": "X"}).status_code, 403)
+
+    def test_admin_adds_edits_and_deletes_food(self):
+        self.login()
+        self.client.post("/api/items", json={"name": "Physalis"})
+        page = self.client.get("/foods")
+        self.assertIn("Physalis".encode(), page.data)
+        self.assertIn("NICHT ZUGEORDNET".encode(), page.data)
+        response = self.client.post("/foods", data={"name": "Physalis", "terms": " kapstachelbeere ,, ",
+                                                    "icon": "1f34a", "category": "Obst und Gemüse", "color": "coral"})
+        self.assertEqual(response.status_code, 302)
+        item = self.describe("Physalis")
+        self.assertEqual((item["icon"], item["category"], item["color"]), ("1f34a", "Obst und Gemüse", "coral"))
+        food = next(food for food in self.store.list_foods() if food["name"] == "Physalis")
+        self.assertEqual(food["terms"], "kapstachelbeere")
+        duplicate = self.client.post("/foods", data={"name": "physalis", "icon": "1f34a",
+                                                     "category": "Obst und Gemüse", "color": "coral"})
+        self.assertEqual(duplicate.status_code, 409)
+        self.client.post("/foods", data={"food_id": food["id"], "name": "Physalis", "terms": "",
+                                         "icon": "1f34b", "category": "Sonstiges", "color": "yellow"})
+        self.assertEqual(self.describe("Physalis")["category"], "Sonstiges")
+        self.assertEqual(self.client.get(f"/foods?edit={food['id']}").status_code, 200)
+        invalid = self.client.post("/foods", data={"name": "Y", "icon": "../evil", "category": "Sonstiges", "color": "blue"})
+        self.assertEqual(invalid.status_code, 400)
+        self.assertEqual(self.client.post(f"/foods/{food['id']}/delete").status_code, 302)
+        self.assertIsNone(self.describe("Physalis")["food_id"])
+
+    def test_restore_adds_only_missing_defaults(self):
+        self.login()
+        ananas = next(food for food in self.store.list_foods() if food["name"] == "Ananas")
+        count = len(self.store.list_foods())
+        self.client.post(f"/foods/{ananas['id']}/delete")
+        self.assertEqual(self.store.restore_default_foods(), 1)
+        self.assertEqual(len(self.store.list_foods()), count)
+        self.assertEqual(self.store.restore_default_foods(), 0)
+
+    def test_every_default_icon_exists(self):
+        icons_dir = Path(self.app.static_folder) / "icons"
+        for food in self.store.list_foods():
+            self.assertTrue((icons_dir / f"{food['icon']}.svg").exists(), food["name"])

@@ -19,6 +19,7 @@ from flask_login import LoginManager, UserMixin, current_user, login_required, l
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+from .catalog import CATEGORIES, COLORS, ICON_LABELS, Matcher, available_icons
 from .amazon import AMAZON_DOMAINS, AMAZON_SETTINGS, AmazonRemote, get_amazon_credentials
 from .security import DUMMY_HASH, clear_failures, hasher, load_amazon_cipher, load_keys, password_valid, rate_limited, record_failure, recovery_hash
 from .store import Store
@@ -262,7 +263,9 @@ def create_app(test_config=None):
     @app.get("/api/items")
     @login_required
     def items():
-        return jsonify(items=store.list_items(), sync=runner.snapshot())
+        matcher = Matcher(store.list_foods())
+        entries = [{**item, **matcher.describe(item["name"])} for item in store.list_items()]
+        return jsonify(items=entries, categories=CATEGORIES, sync=runner.snapshot())
 
     @app.post("/api/items")
     @login_required
@@ -381,6 +384,60 @@ def create_app(test_config=None):
             amazon_domain=amazon_domain,
             amazon_domains=AMAZON_DOMAINS,
         )
+
+    icons = available_icons(app.static_folder)
+
+    @app.route("/foods", methods=["GET", "POST"])
+    @admin_required
+    def foods():
+        if request.method == "POST":
+            form = {key: request.form.get(key, "").strip() for key in ("name", "terms", "icon", "category", "color")}
+            form["terms"] = ", ".join(term.strip() for term in form["terms"].split(",") if term.strip())
+            food_id = request.form.get("food_id", type=int)
+            if (not 1 <= len(form["name"]) <= 100 or len(form["terms"]) > 1000 or form["icon"] not in icons
+                    or form["category"] not in CATEGORIES or form["color"] not in COLORS):
+                flash("Bitte Namen, Abteilung, Farbe und Icon angeben.", "error")
+                return render_foods(form, food_id), 400
+            if not store.save_food(food_id, **form):
+                flash("Diesen Eintrag gibt es schon – bitte den vorhandenen bearbeiten.", "error")
+                return render_foods(form, food_id), 409
+            flash(f"„{form['name']}“ gespeichert.", "success")
+            return redirect(url_for("foods"))
+        edit_id = request.args.get("edit", type=int)
+        form = next((food for food in store.list_foods() if food["id"] == edit_id), None)
+        if form is None:
+            edit_id = None
+            name = request.args.get("name", "").strip()[:100]
+            form = {"name": name, "terms": "", "icon": "", "category": "", "color": ""}
+            match = Matcher(store.list_foods()).match(name) if name else None
+            if match:
+                form.update(icon=match["icon"], category=match["category"], color=match["color"])
+        return render_foods(form, edit_id)
+
+    def render_foods(form, edit_id):
+        catalog = store.list_foods()
+        matcher = Matcher(catalog)
+        unmatched = sorted({item["name"] for item in store.list_items() if matcher.match(item["name"]) is None}, key=str.casefold)
+        grouped = {category: [food for food in catalog if food["category"] == category] for category in CATEGORIES}
+        return render_template(
+            "foods.html", form=form, edit_id=edit_id, grouped=grouped, total=len(catalog), unmatched=unmatched,
+            categories=CATEGORIES, colors=COLORS, icons=icons, icon_labels=ICON_LABELS,
+        )
+
+    @app.post("/foods/<int:food_id>/delete")
+    @admin_required
+    def delete_food(food_id):
+        if not store.delete_food(food_id):
+            abort(404)
+        flash("Eintrag gelöscht.", "success")
+        return redirect(url_for("foods"))
+
+    @app.post("/foods/restore")
+    @admin_required
+    def restore_foods():
+        added = store.restore_default_foods()
+        flash(f"{added} Standardeinträge ergänzt." if added else "Alle Standardeinträge sind bereits vorhanden.", "success")
+        return redirect(url_for("foods"))
 
     @app.route("/account", methods=["GET", "POST"])
     @login_required
