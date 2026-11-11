@@ -196,19 +196,33 @@ if (activeItems) {
   });
   const mobileDialog = document.querySelector('#mobile-add-dialog');
   const mobileInput = document.querySelector('#mobile-item-name');
-  document.querySelector('#mobile-add-button').addEventListener('click', () => mobileDialog.showModal());
+  const mobileFeedback = document.querySelector('#mobile-add-feedback');
+  const outsideDialog = event => {
+    const rect = mobileDialog.getBoundingClientRect();
+    return event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom;
+  };
+  let backdropPress = false;
+  document.querySelector('#mobile-add-button').addEventListener('click', () => {
+    mobileFeedback.textContent = '';
+    mobileDialog.showModal();
+    mobileInput.focus();
+  });
   document.querySelector('#mobile-add-close').addEventListener('click', () => mobileDialog.close());
+  mobileDialog.addEventListener('pointerdown', event => { backdropPress = event.target === mobileDialog && outsideDialog(event); });
   mobileDialog.addEventListener('click', event => {
-    if (event.target === mobileDialog) mobileDialog.close();
+    if (backdropPress && event.target === mobileDialog && outsideDialog(event)) mobileDialog.close();
+    backdropPress = false;
   });
   document.querySelector('#mobile-add-form').addEventListener('submit', async event => {
     event.preventDefault();
+    const name = mobileInput.value.trim();
     try {
-      await api('/api/items', {method: 'POST', body: JSON.stringify({name: mobileInput.value})});
+      await api('/api/items', {method: 'POST', body: JSON.stringify({name})});
       mobileInput.value = '';
-      mobileDialog.close();
+      mobileFeedback.textContent = `„${name}“ hinzugefügt`;
+      mobileInput.focus();
       await refresh();
-    } catch (error) { status.textContent = error.message; }
+    } catch (error) { mobileFeedback.textContent = error.message; }
   });
   document.querySelector('#sync-button')?.addEventListener('click', async () => {
     try { await api('/api/sync', {method: 'POST', body: '{}'}); await refresh(); }

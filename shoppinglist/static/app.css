@@ -40,6 +40,7 @@ body[data-tile-layout="list"] .quantity-stepper{top:50%;right:38px;bottom:auto;l
 .add-dialog::backdrop{background:#10231d88;backdrop-filter:blur(4px)}
 .dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .dialog-heading h2{margin-top:5px}
+.dialog-feedback{min-height:1.4em;margin:0}
 @media(max-width:700px){.list-heading{display:none}.list-toolbar .add-form{display:none}.mobile-fab{position:fixed;z-index:5;right:max(20px,env(safe-area-inset-right));bottom:max(22px,env(safe-area-inset-bottom));display:grid;place-items:center;width:60px;height:60px;border:0;border-radius:50%;background:var(--accent);color:white;box-shadow:0 8px 26px #10231d40;font-size:34px;line-height:1}.add-dialog{align-self:end;margin:0 auto max(12px,env(safe-area-inset-bottom));padding:22px;border-radius:12px}.add-dialog .form-stack{margin-top:22px}.page{padding-bottom:104px}}
 @media(max-width:700px){.topbar-inner{height:auto;min-height:66px;flex-wrap:wrap;gap:0}.brand,.top-actions{height:60px}.navigation{order:3;flex:0 0 100%;height:42px;gap:24px}.food-icon{width:46px;height:46px}}
 .tile-name{line-clamp:3}
