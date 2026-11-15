@@ -60,6 +60,12 @@ async function api(url, options = {}) {
     headers: {'Content-Type': 'application/json', 'X-CSRFToken': csrf, ...options.headers}
   });
   if (response.status === 401) { location.href = '/login'; throw new Error('Anmeldung erforderlich'); }
+  // While the server restarts (e.g. after an update), a proxy in front answers with a
+  // gateway error or its own HTML page instead of the app's JSON.
+  const isJson = (response.headers.get('Content-Type') || '').includes('application/json');
+  if ([502, 503, 504].includes(response.status) || (response.ok && response.status !== 204 && !isJson)) {
+    throw new Error('Korb startet gerade … gleich nochmal versuchen.');
+  }
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     throw new Error(data.error || 'Die Aktion konnte nicht ausgeführt werden.');
