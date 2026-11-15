@@ -354,3 +354,61 @@ class FoodCatalogTests(unittest.TestCase):
         self.client.post("/logout")
         self.login("user", "user-password-123")
         self.assertEqual(self.client.post("/categories", data={"name": "X"}).status_code, 403)
+
+
+class ActivitySyncTests(unittest.TestCase):
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.app = create_app({"TESTING": True, "DATA_DIR": self.temp.name, "ENABLE_SCHEDULER": False,
+                               "SESSION_COOKIE_SECURE": False, "WTF_CSRF_ENABLED": False})
+        self.runner = self.app.extensions["shopping_sync"]
+        self.runner.auto_sync = True
+        self.runner.idle_timeout = 600
+        with self.app.extensions["shopping_store"].connect() as connection:
+            connection.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                               ("user", hasher.hash("user-password-123"), "user"))
+        self.client = self.app.test_client()
+
+    def test_sync_starts_with_session_and_stops_when_idle(self):
+        clock = [1000.0]
+        with patch("shoppinglist.web.time.monotonic", side_effect=lambda: clock[0]), \
+                patch("shoppinglist.web.get_amazon_credentials", return_value={"a": "x"}), \
+                patch.object(self.runner, "start", return_value=True) as start:
+            self.client.get("/health")
+            self.client.get("/login")
+            self.assertFalse(self.runner.active())
+            self.assertEqual(start.call_count, 0)
+
+            self.client.post("/login", data={"username": "user", "password": "user-password-123"})
+            self.client.get("/api/items")
+            self.assertTrue(self.runner.active())
+            self.assertEqual(start.call_count, 1)
+
+            clock[0] += 300
+            self.client.get("/api/items")
+            self.assertEqual(start.call_count, 1)
+
+            clock[0] += 601
+            self.assertFalse(self.runner.active())
+            self.client.get("/api/items")
+            self.assertEqual(start.call_count, 2)
+
+    def test_no_automatic_sync_without_amazon_credentials(self):
+        with patch.object(self.runner, "start", return_value=True) as start:
+            self.client.post("/login", data={"username": "user", "password": "user-password-123"})
+            self.client.get("/api/items")
+            self.assertTrue(self.runner.active())
+            start.assert_not_called()
+
+    def test_scheduler_only_syncs_while_active(self):
+        calls = []
+        with patch("shoppinglist.web.time.sleep", side_effect=[None, None, SystemExit]), \
+                patch("shoppinglist.web.threading.Thread") as thread, \
+                patch.object(self.runner, "active", side_effect=[False, True]), \
+                patch.object(self.runner, "start_automatic", side_effect=lambda: calls.append(1)):
+            self.runner.schedule(300)
+            loop = thread.call_args.kwargs["target"]
+            with self.assertRaises(SystemExit):
+                loop()
+        self.assertEqual(len(calls), 1)

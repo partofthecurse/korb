@@ -39,13 +39,34 @@ class User(UserMixin):
 
 
 class SyncRunner:
-    def __init__(self, store, data_dir, amazon_cipher):
+    def __init__(self, store, data_dir, amazon_cipher, idle_timeout=600, auto_sync=True):
         self.store = store
         self.data_dir = data_dir
         self.amazon_cipher = amazon_cipher
+        self.idle_timeout = idle_timeout
+        self.auto_sync = auto_sync
+        self.last_activity = None
         self.lock = threading.Lock()
         self.status_lock = threading.Lock()
         self.status = {"running": False, "last_success": None, "error": None}
+
+    def touch(self):
+        """Record activity of a signed-in user; sync at once when a session (re)starts."""
+        now = time.monotonic()
+        with self.status_lock:
+            was_idle = self.last_activity is None or now - self.last_activity > self.idle_timeout
+            self.last_activity = now
+        if was_idle:
+            self.start_automatic()
+
+    def active(self):
+        with self.status_lock:
+            return self.last_activity is not None and time.monotonic() - self.last_activity <= self.idle_timeout
+
+    def start_automatic(self):
+        if not self.auto_sync or not all(get_amazon_credentials(self.store, self.amazon_cipher).values()):
+            return False
+        return self.start()
 
     def start(self):
         if not self.lock.acquire(blocking=False):
@@ -89,8 +110,9 @@ class SyncRunner:
     def schedule(self, interval):
         def loop():
             while True:
-                self.start()
                 time.sleep(jittered_interval(interval))
+                if self.active():
+                    self.start_automatic()
         threading.Thread(target=loop, daemon=True).start()
 
     def snapshot(self):
@@ -121,7 +143,11 @@ def create_app(test_config=None):
     app.secret_key, cipher = load_keys(data_dir)
     amazon_cipher = load_amazon_cipher(data_dir)
     store = Store(data_dir / "shopping.db")
-    runner = SyncRunner(store, data_dir, amazon_cipher)
+    runner = SyncRunner(
+        store, data_dir, amazon_cipher,
+        idle_timeout=max(60, int(os.getenv("SYNC_IDLE_TIMEOUT_SECONDS", "600"))),
+        auto_sync=app.config["ENABLE_SCHEDULER"],
+    )
     app.extensions["shopping_store"] = store
     app.extensions["shopping_sync"] = runner
     app.extensions["shopping_amazon_cipher"] = amazon_cipher
@@ -185,6 +211,13 @@ def create_app(test_config=None):
         response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.before_request
+    def track_activity():
+        # Alexa is only polled while someone uses the app: any request of a signed-in
+        # user counts as activity, the list page itself refreshes every 10 seconds.
+        if request.endpoint not in (None, "static", "health") and current_user.is_authenticated:
+            runner.touch()
 
     @app.get("/health")
     def health():
