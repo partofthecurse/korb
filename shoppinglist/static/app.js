@@ -234,6 +234,21 @@ if (activeItems) {
     try { await api('/api/sync', {method: 'POST', body: '{}'}); await refresh(); }
     catch (error) { status.textContent = error.message; }
   });
+  // Poll only while the page is visible: a tab or installed app left open in the
+  // background does not count as an active session, so Alexa is not polled for it.
+  let pollTimer = null;
+  function startPolling() {
+    if (pollTimer === null) pollTimer = setInterval(refresh, 10000);
+  }
+  function stopPolling() {
+    clearInterval(pollTimer);
+    pollTimer = null;
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { stopPolling(); return; }
+    refresh();
+    startPolling();
+  });
   refresh();
-  setInterval(refresh, 10000);
+  if (!document.hidden) startPolling();
 }

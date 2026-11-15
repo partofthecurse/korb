@@ -27,7 +27,7 @@ A self-hosted shopping list with a Bring-style interface, Alexa list import, use
    docker compose up -d
    ```
 
-4. Open `http://<SHOPPING_BIND_ADDRESS>:32768`, sign in, then enter your Amazon region, email, password, and TOTP seed under **Amazon**. Credentials and refresh session are encrypted in SQLite. Active Alexa items sync at startup and every five minutes, then are removed from Amazon after local storage.
+4. Open `http://<SHOPPING_BIND_ADDRESS>:32768`, sign in, then enter your Amazon region, email, password, and TOTP seed under **Amazon**. Credentials and refresh session are encrypted in SQLite. Alexa is only polled while someone is signed in and using Korb: when a session starts, then every five minutes until ten minutes without activity (`SYNC_INTERVAL_SECONDS`, `SYNC_IDLE_TIMEOUT_SECONDS`). A list that is open in the background does not count. Imported items are removed from Amazon after local storage; items added via Alexa in the meantime wait on Amazon until the next session.
 5. To enable remote HTTPS access, set `TS_HOSTNAME`, `TS_CERT_DOMAIN`, and `TS_AUTHKEY_SECRET_FILE` in `.env`, store the reusable key in `secrets/tailscale_authkey`, and protect both files with `chmod 600`. Copy `compose.tailscale.yaml` and `config/`, then run:
 
    ```sh
